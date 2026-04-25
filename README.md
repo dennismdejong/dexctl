@@ -1,8 +1,8 @@
 # dexctl
 
-[![CI](https://github.com/your-github-username/dexctl/actions/workflows/ci.yml/badge.svg)](https://github.com/your-github-username/dexctl/actions/workflows/ci.yml)
-[![Release](https://github.com/your-github-username/dexctl/actions/workflows/release.yml/badge.svg)](https://github.com/your-github-username/dexctl/actions/workflows/release.yml)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/your-github-username/dexctl)](https://github.com/your-github-username/dexctl)
+[![CI](https://github.com/dennismdejong/dexctl/actions/workflows/ci.yml/badge.svg)](https://github.com/dennismdejong/dexctl/actions/workflows/ci.yml)
+[![Release](https://github.com/dennismdejong/dexctl/actions/workflows/release.yml/badge.svg)](https://github.com/dennismdejong/dexctl/actions/workflows/release.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/dennismdejong/dexctl)](https://github.com/dennismdejong/dexctl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A command-line interface (CLI) tool for managing Dex clients. dexctl allows you to perform CRUD operations on Dex clients, list all clients, and connect to a Dex server with optional TLS certificate verification.
@@ -19,14 +19,14 @@ A command-line interface (CLI) tool for managing Dex clients. dexctl allows you 
 
 ### From Releases
 
-Download the appropriate binary for your platform from the [GitHub Releases](https://github.com/your-github-username/dexctl/releases) page.
+Download the appropriate binary for your platform from the [GitHub Releases](https://github.com/dennismdejong/dexctl/releases) page.
 
 ### Building from Source
 
 #### Using Go
 
 ```bash
-git clone https://github.com/your-github-username/dexctl.git
+git clone https://github.com/dennismdejong/dexctl.git
 cd dexctl
 go build -o dexctl .
 ```
@@ -378,4 +378,4 @@ MIT
 
 ---
 
-*Note: Remember to replace `your-github-username` with your actual GitHub username in the URLs and badges above.*
+*Note: Remember to replace `dennismdejong` with your actual GitHub username in the URLs and badges above.*
