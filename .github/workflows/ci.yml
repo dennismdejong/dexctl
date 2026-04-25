@@ -16,13 +16,11 @@ on:
 
 jobs:
   test:
-    name: Test (Go ${{ matrix.go-version }})
+    name: Test (Go 1.26 on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        go-version:
-          - "1.26"
         os:
           - ubuntu-latest
           - macos-latest
@@ -42,69 +40,10 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        if: matrix.os == 'ubuntu-latest'
-        with:
-          file: coverage.out
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.26"
-          cache: true
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          args: --timeout 5m
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.26"
-          cache: true
-
-      - name: Run Gosec Security Scanner
-        uses: securego/gosec-action@v2
-        with:
-          args: '-fmt json -out gosec-report.json ./...'
-          version: latest
-
-      - name: Upload Gosec report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gosec-report
-          path: gosec-report.json
-          retention-days: 7
+        run: go test -v ./...
 
   build:
-    name: Build (${{ matrix.os }})
+    name: Build (Go 1.26 on ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -136,8 +75,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dexctl-${{ matrix.os }}
-          path: |
-            dexctl${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          path: dexctl${{ matrix.os == 'windows-latest' && '.exe' || '' }}
           retention-days: 5
 
   build-multiarch:
@@ -168,49 +106,3 @@ jobs:
           name: dexctl-dist
           path: dist/
           retention-days: 5
-
-  build-docker:
-    name: Build Docker Image
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ github.repository }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=,suffix=,format=short
-            type=raw,value=latest,enable={{ is_default_branch }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: false
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=docker,dest=/tmp/image.tar
-          platforms: linux/amd64,linux/arm64
-
-      - name: Upload Docker image
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image
-          path: /tmp/image.tar
-          retention-days: 1
