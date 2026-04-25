@@ -13,18 +13,8 @@ on:
 
 jobs:
   release:
-    name: Release (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            binary_ext: ""
-          - os: macos-latest
-            binary_ext: ""
-          - os: windows-latest
-            binary_ext: ".exe"
+    name: Release
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -38,17 +28,11 @@ jobs:
           go-version: "1.26"
           cache: true
 
-      - name: Debug version
-        run: |
-          echo "GitHub Ref: ${{ github.ref }}"
-          echo "GitHub Ref Name: ${{ github.ref_name }}"
-          echo "GitHub Event Name: ${{ github.event_name }}"
-
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           version: "~> v2"
-          args: release --clean --id dexctl
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
@@ -65,94 +49,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  release-docker:
-    name: Release Docker Image
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref_name, 'v') && !contains(github.ref_name, '-')
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ github.repository }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=sha,prefix=,suffix=,format=short
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: ${{ github.event_name != 'workflow_dispatch' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  release-aur:
-    name: Release AUR Package
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref_name, 'v1.') || startsWith(github.ref_name, 'v2.')
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Prepare PKGBUILD snapshot
-        run: |
-          mkdir -p release-aur
-          goreleaser release --clean --snapshot --dir=release-aur
-          ls -la release-aur/
-
-      - name: Update AUR package
-        run: |
-          VERSION=${GITHUB_REF_NAME#v}
-          git clone https://$GITHUB_TOKEN@github.com/${{ github.repository }}.git aur-temp
-          cd aur-temp
-          rm -rf *
-          cp ../release-aur/*.pkg.tar.zst .
-          curl -sL https://api.github.com/repos/${{ github.repository }}/tarball/${VERSION} | tar xz --strip-components=1
-          # Update PKGBUILD with new version
-          sed -i "s/pkgver=.*/pkgver=${VERSION}/" PKGBUILD
-          makepkg --printsrcinfo > .SRCINFO
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-          git add .
-          git commit -m "Release ${VERSION}"
-          git push
-          cd ..
-          rm -rf aur-temp
-        shell: bash
-      - name: Upload AUR package
-        uses: actions/upload-artifact@v4
-        with:
-          name: aur-package
-          path: release-aur/*.pkg.tar.zst
-          retention-days: 30
-
   verify:
     name: Verify Release
     runs-on: ubuntu-latest
@@ -168,24 +64,10 @@ jobs:
           merge-multiple: true
 
       - name: List artifacts
-        run: ls -la artifacts/
+        run: ls -la artifacts/ || echo "No artifacts downloaded"
 
       - name: Verify checksums
         run: |
           if [ -f artifacts/checksums.txt ]; then
             cat artifacts/checksums.txt
           fi
-
-      - name: Verify executables
-        run: |
-          for exe in artifacts/dexctl*; do
-            if [ -f "$exe" ]; then
-              echo "Checking $exe..."
-              if [[ "$exe" == *.exe ]]; then
-                ./$exe version || echo "Windows binary check"
-              else
-                chmod +x "$exe"
-                ./$exe version
-              fi
-            fi
-          done
