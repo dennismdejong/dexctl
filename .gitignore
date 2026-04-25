@@ -1,0 +1,38 @@
+# Binaries
+dexctl
+dexctl.exe
+*.exe
+dist/
+bin/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.vim/
+
+# Go
+*.test
+coverage.out
+coverage.xml
+gosec-report.json
+
+# Release
+release-aur/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+
+# Temporary
+tmp/
+temp/

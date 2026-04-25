@@ -1,0 +1,97 @@
+name: Snapshot Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot:
+        description: Create snapshot release
+        type: boolean
+        default: true
+
+jobs:
+  snapshot:
+    name: Create Snapshot
+    runs-on: ubuntu-latest
+    if: github.event.inputs.snapshot == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: Run GoReleaser (Snapshot)
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --snapshot --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload snapshot artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dexctl-snapshot
+          path: dist/
+          retention-days: 7
+
+  build-standalone:
+    name: Build Standalone
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            binary_ext: ""
+            platform: linux-amd64
+          - os: ubuntu-latest
+            binary_ext: ""
+            platform: linux-arm64
+          - os: macos-latest
+            binary_ext: ""
+            platform: darwin-amd64
+          - os: macos-latest
+            binary_ext: ""
+            platform: darwin-arm64
+          - os: windows-latest
+            binary_ext: ".exe"
+            platform: windows-amd64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: Build binary
+        run: |
+          EXTENSION="${{ matrix.binary_ext }}"
+          if [ "${{ matrix.platform }}" = "windows-amd64" ]; then
+            GOOS=windows GOARCH=amd64 go build -ldflags="-X main.version=snapshot" -o dexctl${EXTENSION} .
+          elif [ "${{ matrix.platform }}" = "darwin-amd64" ]; then
+            GOOS=darwin GOARCH=amd64 go build -ldflags="-X main.version=snapshot" -o dexctl${EXTENSION} .
+          elif [ "${{ matrix.platform }}" = "darwin-arm64" ]; then
+            GOOS=darwin GOARCH=arm64 go build -ldflags="-X main.version=snapshot" -o dexctl${EXTENSION} .
+          elif [ "${{ matrix.platform }}" = "linux-arm64" ]; then
+            GOOS=linux GOARCH=arm64 go build -ldflags="-X main.version=snapshot" -o dexctl${EXTENSION} .
+          else
+            go build -ldflags="-X main.version=snapshot" -o dexctl${EXTENSION} .
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dexctl-${{ matrix.platform }}
+          path: "dexctl${{ matrix.binary_ext }}"
+          retention-days: 7
